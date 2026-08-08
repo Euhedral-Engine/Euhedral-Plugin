@@ -1119,83 +1119,43 @@ Record local, source-free metrics:
 
 Do not record prompts, source, diffs, credentials, command environment, or raw model output in normal telemetry. Version 1 should have no external telemetry endpoint.
 
-## 22. Implementation phases
+## 22. Implementation phase index
 
-### Phase 0: Platform skeleton
+The implementation is split into phase-local mini blueprints. Each mini blueprint is a fresh-context handoff containing its own locked contracts, deliverables, exclusions, tests, completion gate, and paired reasoning/coding prompts.
 
-- Gradle IntelliJ plugin project for IntelliJ IDEA 2026.2 and Java 25.
-- Kotlin, bundled coroutines, test framework, Plugin Verifier, and `runIde`.
-- `plugin.xml`, project service scope, empty tool window, settings shell, and architecture tests.
+Use them in order. Do not load later mini blueprints merely because context remains available.
 
-Exit: plugin loads, unloads, verifies, and has no scope leaks.
+| Phase | Mini blueprint | Fresh-context input | Exit |
+|---:|---|---|---|
+| 0 | [Platform Skeleton](phases/phase-0-platform-skeleton.md) | Repository plus current IntelliJ 2026.2 documentation | Plugin loads, unloads, and verifies |
+| 1 | [Domain and Ports](phases/phase-1-domain-ports.md) | Phase 0 plan and current source | Pure contracts pass without adapters |
+| 2 | [Project Rules and Intelligence](phases/phase-2-project-intelligence.md) | Phase 1 contracts and current source | Inspection tools work without Gemini |
+| 3 | [Durable Editing](phases/phase-3-durable-editing.md) | Phase 1-2 contracts and plans | Multi-file rollback is deterministic |
+| 4 | [Policy and Validators](phases/phase-4-policy-validators.md) | Rules and editing contracts | Invalid effects fail before execution |
+| 5 | [Gradle and Verification](phases/phase-5-gradle-verification.md) | Build port, project model, transaction, and policy contracts | Manual transactions can be fully verified |
+| 6 | [Gemini Transport](phases/phase-6-gemini-transport.md) | Gemini and credential ports plus current official API documentation | Scripted tool exchanges pass |
+| 7 | [Autonomous Agent](phases/phase-7-autonomous-agent.md) | Phase 1-6 plans and implementations | Headless edit-repair-verify flow passes |
+| 8 | [Agent UI](phases/phase-8-agent-ui.md) | Agent events and application use cases | Full workflow is usable without logs |
+| 9 | [Inline Completion](phases/phase-9-inline-completion.md) | Current plugin plus current inline/model documentation | Native completion is responsive and stale-safe |
+| 10 | [OAuth](phases/phase-10-oauth.md) | Phase 6 credential/transport contracts plus current OAuth documentation | Both credential modes pass one contract |
+| 11 | [Hardening and Release](phases/phase-11-hardening-release.md) | All phase plans, source, tests, and reports | Verified private artifact is reproducible |
 
-### Phase 1: Domain and ports
+Dependency sequence:
 
-- Agent state, reducer, events, limits, tool descriptors, tool effects, results, and error taxonomy.
-- Transport, inspection, edit, build, Git-read, credential, checkpoint, and approval ports.
-
-Exit: pure tests define engine contracts without IntelliJ or Gemini.
-
-### Phase 2: Project rules and intelligence
-
-- Versioned YAML rules.
-- Project context, module classification, language levels, source sets, symbol resolution, references, implementations, and inspection tools.
-
-Exit: tools can be invoked from a test action with no Gemini dependency.
-
-### Phase 3: Durable editing
-
-- Edit transactions, persistent checkpoint journal, native commands/write actions, exact replacement, create, delete, move, conflict detection, rollback, and crash recovery.
-
-Exit: multi-file rollback is deterministic and external changes are never overwritten.
-
-### Phase 4: Policy and validators
-
-- Policy decisions, workspace/symlink/sensitive-path boundaries, import, language-level, logging, and encoding validators, plus approval suspension.
-
-Exit: invalid changes are rejected before a build starts.
-
-### Phase 5: Gradle and verification
-
-- Process runner, output streaming, cancellation, Gradle adapter, diagnostics, test tools, affected-code analysis, and mandatory verification plans.
-
-Exit: a manually initiated transaction can be validated, tested, fully verified, cancelled, and rolled back.
-
-### Phase 6: Gemini transport
-
-- PasswordSafe API keys, REST transport, current Interactions `steps` schema, SSE, function calls/results, stateful continuation, retries, deletion, and fake-server tests.
-
-Exit: a scripted tool interaction completes against both fake and opt-in live Gemini endpoints.
-
-### Phase 7: Autonomous agent
-
-- Session service, execution engine, tool registry/dispatcher, batching, de-duplication, limits, `complete_task`, repair cycles, cancellation, and approval resume.
-
-Exit: a headless fixture completes a multi-step edit/test/repair/verify task with deterministic events.
-
-### Phase 8: Agent UI
-
-- Chat, action tree, streamed output, diagnostics, diffs, approvals, conflict view, cancel, rollback, recovery, and native Commit UI handoff.
-
-Exit: the complete agent workflow is usable without inspecting logs.
-
-### Phase 9: Inline completion
-
-- Native provider, bounded semantic context, Flash-Lite request, cancellation, stale-result rejection, cache, multi-line rendering, and local metrics.
-
-Exit: completion remains responsive while typing and while an agent session runs.
-
-### Phase 10: OAuth
-
-- Optional desktop OAuth provider, loopback callback, token storage/refresh/revoke, Cloud-project guidance, and provider selection.
-
-Exit: API key and OAuth modes pass the same transport contract tests.
-
-### Phase 11: Hardening and release
-
-- Full failure matrix, performance tests, Plugin Verifier, dependency audit, privacy review, recovery testing, documentation, and packaged private release.
-
-Exit: all acceptance criteria and failure cases pass on IntelliJ IDEA 2026.2.
+```text
+0 Platform
+  -> 1 Domain and ports
+  -> 2 Project intelligence
+  -> 3 Durable editing
+  -> 4 Policy
+  -> 5 Gradle and verification
+  -> 6 Gemini transport
+  -> 7 Autonomous agent
+  -> 8 Agent UI
+  -> 9 Inline completion
+  -> 10 OAuth
+  -> 11 Hardening and release
+```
 
 ## 23. Master acceptance criteria
 
@@ -1247,334 +1207,25 @@ Exit: all acceptance criteria and failure cases pass on IntelliJ IDEA 2026.2.
 - Stale completions are never rendered.
 - Plugin context overhead meets the measured p95 target without claiming remote sub-100 ms latency.
 
-## 24. Implementation prompt sequence
+## 24. Using the mini blueprints
 
-Use the prompts in order. Each reasoning prompt creates a durable phase plan under `docs/implementation/`. It does not modify production code. Each coding prompt reads that plan, implements only its phase, runs the required checks, updates the plan with actual decisions, and commits the completed phase to `main` only after checks pass.
+Each phase file contains two prompts:
 
-Do not combine phases merely because the current model still has context. Small verified commits are intentional context checkpoints.
+- Prompt A plans only that phase and writes an implementation plan under `docs/implementation/`.
+- Prompt B reads the mini blueprint and approved implementation plan, implements only that phase, runs its checks, records evidence, and creates the phase commit.
 
-Common rules for every prompt:
+The prompts intentionally do not require this entire master document. The mini blueprint restates the global rules that constrain its work and names the exact earlier plans or contracts it may read. The master remains the authority for product scope and cross-cutting acceptance criteria.
 
-- Read repository agent instructions before acting.
-- Preserve unrelated user changes and stage only phase-owned paths.
-- Work directly on `main` as authorized, but use only fast-forward pushes.
-- Never force-push, rebase published commits, or amend an earlier phase commit.
-- Stop on remote divergence or a material unresolved design choice instead of guessing.
-- Keep plans, documentation, commit messages, and generated text ASCII-only.
-- Treat the master blueprint as authoritative. Record implementation discoveries in the phase plan rather than silently changing architecture.
-- Re-check version-sensitive official API documentation in the phase that first uses it.
+Execution rules:
 
-### Prompt 0A: Repository foundation plan
-
-Mode: Reasoning
-
-Reasoning level: Ultra
-
-```text
-Read docs/design/gemini-intellij-plugin-master-blueprint.md completely. Inspect the current Euhedral-Plugin repository and the latest official IntelliJ IDEA 2026.2 plugin documentation. Produce docs/implementation/phase-0-platform-plan.md.
-
-Plan the exact Gradle project, IntelliJ Platform Gradle Plugin 2.x configuration, Java 25 and Kotlin targets, IntelliJ 2026.2 dependency, bundled plugin/module dependencies, plugin.xml extensions, test framework, Plugin Verifier, runIde setup, project-level coroutine service, empty tool-window shell, settings shell, and package-boundary tests.
-
-Resolve exact dependency versions from current official sources. Do not implement production code. Identify public versus internal or experimental APIs. Include file paths, test strategy, commands, risks, and phase exit criteria. Keep the plan ASCII-only. Commit and push only this plan to main after reviewing the diff.
-```
-
-### Prompt 0B: Implement platform skeleton
-
-Mode: Coding
-
-Reasoning level: Medium
-
-```text
-Read the master blueprint and docs/implementation/phase-0-platform-plan.md. Implement Phase 0 exactly within its scope. Use IntelliJ IDEA 2026.2, Java 25, Kotlin, the IntelliJ Platform Gradle Plugin 2.x, and bundled coroutines. Establish the package boundaries now even if most packages are empty.
-
-Add the smallest tool-window and settings shells needed to prove registration and project-scope cancellation. Add architecture tests and platform smoke tests. Run all Phase 0 checks, run Plugin Verifier against the selected 2026.2 target, inspect the final diff, update the phase plan with deviations and verified commands, then commit and push the phase to main. Do not start Phase 1.
-```
-
-### Prompt 1A: Domain and ports plan
-
-Mode: Reasoning
-
-Reasoning level: Ultra
-
-```text
-Read the master blueprint, Phase 0 plan, and current source. Produce docs/implementation/phase-1-domain-ports-plan.md for Phase 1 only.
-
-Define the pure agent state machine, reducer, events, budgets, retry classes, tool calls/results/descriptors/effects, error taxonomy, session revision digest, function-call de-duplication contract, and every application port. Specify which values are serializable and which remain adapter-local. Design tests for every valid and invalid transition and for independent budget accounting.
-
-No core or port type may import IntelliJ, Google, Gradle, Git, HTTP, Swing, or adapter classes. Do not implement production code. Commit and push only the reviewed ASCII plan to main.
-```
-
-### Prompt 1B: Implement domain and ports
-
-Mode: Coding
-
-Reasoning level: High
-
-```text
-Read the master blueprint and Phase 1 plan. Implement the pure core domain and ports exactly as planned. Keep side effects out of the reducer. Make invalid state transitions explicit. Implement independent transport, transient-tool, repair, turn, tool-call, and wall-time budgets. Add exhaustive unit tests, including duplicate mutating call IDs and verified-revision invalidation.
-
-Run the full current test suite and architecture tests. Update the phase plan with final names and deviations. Inspect the diff, then commit and push Phase 1 to main. Do not add IntelliJ adapters or Gemini wire DTOs.
-```
-
-### Prompt 2A: Project intelligence plan
-
-Mode: Reasoning
-
-Reasoning level: Max
-
-```text
-Read the master blueprint, prior phase plans, and current source. Inspect the real Euhedral repository structure if it is available, but do not invent module paths if it is not. Produce docs/implementation/phase-2-project-intelligence-plan.md.
-
-Plan the versioned .euhedral-agent.yaml schema and parser, precedence rules, project context, IntelliJ module and Gradle model mapping, module SDK versus Java language level, main versus test source sets, smart read actions, symbol IDs, smart pointers, JavaPsiFacade lookup, ReferencesSearch, ClassInheritorsSearch, OverridingMethodsSearch, indexing behavior, output bounds, and all inspection tools.
-
-Include IntelliJ fixture projects and exact tests for cross-module Ports and Adapters lookup and test-only dependency misclassification. Do not implement. Commit and push only the plan to main.
-```
-
-### Prompt 2B: Implement project intelligence
-
-Mode: Coding
-
-Reasoning level: High
-
-```text
-Implement Phase 2 from the master blueprint and approved Phase 2 plan. Add the rules service, module classifier, context extractor, symbol resolver, inspection adapter, and model-neutral tool results. Use only public IntelliJ 2026.2 APIs. Keep all project-wide PSI work cancellable and smart-mode aware.
-
-Do not add Gemini or editing. Add fixture tests for Java 11, 17, and 21 language levels, cross-module references and implementations, test-scope dependencies, cancellation, invalidated pointers, and bounded results. Run all tests and Plugin Verifier, update the plan, inspect the diff, then commit and push Phase 2 to main.
-```
-
-### Prompt 3A: Durable editing plan
-
-Mode: Reasoning
-
-Reasoning level: Ultra
-
-```text
-Read the master blueprint and all completed phase plans. Produce docs/implementation/phase-3-durable-editing-plan.md.
-
-Design EditTransaction, the durable checkpoint manifest and content-addressed blob store, atomic persistence, restrictive permissions, commands/write actions, read-only checks, document saving before builds, exact replacement, create/delete/move lineage, operation-level rollback, session rollback, crash recovery, retention cleanup, expected-hash enforcement, modification-stamp checks, external-edit conflicts, and safe rollback refusal.
-
-Resolve IntelliJ 2026.2 command and suspending write-action APIs from official sources. Include failure-injection and multi-file recovery tests. No Git stash or Git mutation is allowed. Do not implement. Commit and push only the plan to main.
-```
-
-### Prompt 3B: Implement durable editing
-
-Mode: Coding
-
-Reasoning level: High
-
-```text
-Implement Phase 3 from the blueprint and approved plan. No file mutation may occur until its durable checkpoint is confirmed. Apply all document changes through minimal IntelliJ commands and write actions. Enforce expected hashes and reject external conflicts without overwriting them.
-
-Implement exact replace, create, delete, move, rollback, journal recovery, and retention. Add failure-injection tests for checkpoint write failure, crash boundaries, stale hashes, open unsaved documents, read-only files, symlinked parents, and multi-file rollback. Run all tests and Plugin Verifier. Update the plan, inspect the diff, then commit and push Phase 3 to main.
-```
-
-### Prompt 4A: Policy plan
-
-Mode: Reasoning
-
-Reasoning level: Max
-
-```text
-Read the blueprint, completed plans, rules schema, and editing implementation. Produce docs/implementation/phase-4-policy-plan.md.
-
-Plan ALLOW, DENY, and REQUIRE_APPROVAL flow; canonical workspace boundaries; symlink escape defense; protected and secret-like paths; hard versus advisory validators; forbidden imports; module language-level validation; SLF4J and System.out validation; encoding preservation; hot-path warnings; deletion/move approval; rules-file approval; and approval suspension/resumption.
-
-Define stable reason codes and model-safe findings. Include policy matrix and adversarial path tests. Do not implement. Commit and push only the plan to main.
-```
-
-### Prompt 4B: Implement policy and validators
-
-Mode: Coding
-
-Reasoning level: High
-
-```text
-Implement Phase 4. Route every effectful tool through PolicyEngine before its adapter. Implement hard validators and advisory performance findings with stable codes. Hard architecture validation may use only explicit or unambiguous module roles; heuristic classification must not create hard denials.
-
-Add adversarial path, symlink, secret-file, import, language-level, logging, encoding, approval, and rollback tests. Ensure a rejected edit rolls back only that operation. Run all tests and Plugin Verifier, update the phase plan, inspect the diff, then commit and push Phase 4 to main.
-```
-
-### Prompt 5A: Gradle and verification plan
-
-Mode: Reasoning
-
-Reasoning level: Ultra
-
-```text
-Read the blueprint and all completed phases. Produce docs/implementation/phase-5-gradle-verification-plan.md.
-
-Plan BuildSystemPort implementation for Gradle only. Cover linked-root and wrapper discovery, Gradle JVM selection, argument-array command construction, GeneralCommandLine, OSProcessHandler, streamed output, process-tree cancellation, timeout, output caps, redaction, compiler and JUnit diagnostic parsing, build/test tools, transaction-document saving, AffectedCodeAnalyzer, escalation rules, verification plans, and verified transaction digests.
-
-Do not use a shell, force clean, or force cache flags. Include multi-project fixture tests and hung-process tests. Do not implement. Commit and push only the plan to main.
-```
-
-### Prompt 5B: Implement Gradle and verification
-
-Mode: Coding
-
-Reasoning level: High
-
-```text
-Implement Phase 5 exactly through BuildSystemPort. The application layer must not construct Gradle commands. Stream process events while returning bounded structured diagnostics. Implement targeted class/method tests, module tests, full verification, affected-code escalation, cancellation, timeout, and verified-digest invalidation.
-
-Add temporary multi-project Gradle fixtures for body, signature, interface, build-script, and no-known-test changes. Test process-tree termination and verify no PSI read lock is held while waiting. Run all tests and Plugin Verifier, update the plan, inspect the diff, then commit and push Phase 5 to main.
-```
-
-### Prompt 6A: Gemini transport plan
-
-Mode: Reasoning
-
-Reasoning level: Ultra
-
-```text
-Read the master blueprint and current code. Re-check the current official Gemini Interactions API documentation before planning. Produce docs/implementation/phase-6-gemini-transport-plan.md.
-
-Plan PasswordSafe API-key storage, java.net.http.HttpClient lifecycle, current Interactions request and steps schemas, SSE events, stateful previous_interaction_id continuation, required per-turn configuration, function calls and function results, call IDs, model output, unknown-step compatibility, deletion, cancellation, Retry-After, retry taxonomy, safe logging, fake HTTP/SSE server tests, and an opt-in live smoke test.
-
-Use gemini-3.6-flash for the agent. Do not add Ktor, a sidecar, or OAuth. Do not implement. Commit and push only the plan to main.
-```
-
-### Prompt 6B: Implement Gemini transport
-
-Mode: Coding
-
-Reasoning level: High
-
-```text
-Implement Phase 6 from the approved plan using plugin-owned DTOs and a java.net.http adapter. Use the current Interactions steps schema, preserve function call IDs, re-send tools/system instructions/generation configuration on continuations, and default stateful sessions to store=true. Store the API key only in PasswordSafe.
-
-Add fake-server contract tests for unary and streaming success, split SSE frames, split UTF-8, malformed JSON, unknown events, 401, 429 with Retry-After, retryable 5xx, timeout, cancellation, deletion, and stateful function-result continuation. Keep live tests opt-in. Run all offline tests and Plugin Verifier, update the plan, inspect the diff, then commit and push Phase 6 to main.
-```
-
-### Prompt 7A: Autonomous engine plan
-
-Mode: Reasoning
-
-Reasoning level: Ultra
-
-```text
-Read the blueprint and all implemented contracts. Produce docs/implementation/phase-7-autonomous-engine-plan.md.
-
-Plan AgentSessionService, AgentExecutionEngine effects, interaction continuation, tool registry, dispatcher, effect batching, model argument validation, at-most-once mutating calls, limits, event ordering, policy checks, approval suspension, complete_task as an engine control boundary, mandatory verification, repair-cycle accounting, final-response rules, cancellation, project close, and recovery metadata.
-
-Prove in the plan that UI, Gemini transport, ToolExecutor, and policy cannot bypass each other's boundaries. Include deterministic headless scenario tests. Do not implement. Commit and push only the plan to main.
-```
-
-### Prompt 7B: Implement autonomous engine
-
-Mode: Coding
-
-Reasoning level: High
-
-```text
-Implement Phase 7 from the approved plan. Keep the reducer pure and orchestration effect-driven. Execute only all-read-only batches concurrently; serialize every other batch. Deduplicate mutating call IDs. Make complete_task the only successful completion route and invalidate its verified digest after any later mutation.
-
-Add headless tests for inspect/edit/test/repair/verify success, premature final output, malformed calls, duplicate calls, approval pause/resume, index retry, transport retry, exhausted repair cycles, limits, cancellation at every boundary, project close, and post-verification mutation. Run all tests and Plugin Verifier, update the plan, inspect the diff, then commit and push Phase 7 to main.
-```
-
-### Prompt 8A: Agent UI plan
-
-Mode: Reasoning
-
-Reasoning level: Max
-
-```text
-Read the blueprint, AgentEvent types, and engine behavior. Produce docs/implementation/phase-8-agent-ui-plan.md.
-
-Plan the immutable view-model reducer, chat transcript, expandable action tree, streamed output, diagnostic links, live process output, changed-file list, DiffManager integration, approval cards, conflict inspection, cancel, rollback, recovery, budget display, settings integration, and native Commit UI handoff. The UI may consume events and invoke application use cases only; it may not inspect engine internals or call adapters.
-
-Include EDT rules, disposal, accessibility, and UI fixture tests. Do not implement. Commit and push only the plan to main.
-```
-
-### Prompt 8B: Implement agent UI
-
-Mode: Coding
-
-Reasoning level: Medium
-
-```text
-Implement Phase 8 from the approved plan using IntelliJ public APIs and Kotlin UI DSL 2 where appropriate. Reduce AgentEvent streams into immutable view state, apply Swing changes only on EDT, and dispose every subscription with project/plugin lifetime.
-
-Implement native diffs from checkpoint to current content and make request_commit open the native human-controlled commit flow without staging or committing. Add UI/view-model tests and a runIde smoke checklist. Run all tests and Plugin Verifier, update the plan, inspect the diff, then commit and push Phase 8 to main.
-```
-
-### Prompt 9A: Inline completion plan
-
-Mode: Reasoning
-
-Reasoning level: Max
-
-```text
-Read the blueprint and current plugin. Re-check the IntelliJ 2026.2 InlineCompletionProvider API and current Gemini 3.5 Flash-Lite contract. Produce docs/implementation/phase-9-inline-completion-plan.md.
-
-Plan a vertical slice independent from AgentExecutionEngine: native provider registration, per-editor job ownership, debounce, cancellation, semantic caret context, 8 KiB prefix, 4 KiB suffix, stateless store=false transport, minimal thinking, stale-revision rejection, multi-line elements, memory-only LRU cache, timeout, local source-free metrics, and overlap with agent sessions.
-
-Define measured latency benchmarks without promising remote sub-100 ms completion. Do not implement. Commit and push only the plan to main.
-```
-
-### Prompt 9B: Implement inline completion
-
-Mode: Coding
-
-Reasoning level: High
-
-```text
-Implement Phase 9 from the approved plan with gemini-3.5-flash-lite, store=false, and minimal thinking. Use IntelliJ's native inline provider and acceptance behavior; do not trap Tab globally. Maintain one active request per editor, cancel on new input, and reject every stale response.
-
-Keep cache content in memory only and keep completion context independent from agent context. Add context, cache, cancellation, stale-result, multi-line, disposal, and local-overhead benchmark tests. Run all tests and Plugin Verifier, update the plan with measured results, inspect the diff, then commit and push Phase 9 to main.
-```
-
-### Prompt 10A: OAuth plan
-
-Mode: Reasoning
-
-Reasoning level: Max
-
-```text
-Read the blueprint and existing credential/transport code. Re-check Google's current official Gemini OAuth documentation. Produce docs/implementation/phase-10-oauth-plan.md.
-
-Plan an optional desktop OAuth provider with Google Cloud project prerequisites, loopback callback, PKCE where supported by the current Google contract, browser launch, state verification, callback timeout, token refresh, revoke/logout, PasswordSafe storage, provider selection, cancellation, port collision, and user guidance. Do not assume a Google AI consumer subscription pays Gemini Developer API usage.
-
-Keep API-key auth as the default and preserve the existing transport contract. Do not implement. Commit and push only the plan to main.
-```
-
-### Prompt 10B: Implement OAuth
-
-Mode: Coding
-
-Reasoning level: High
-
-```text
-Implement Phase 10 from the approved plan and current official Google OAuth requirements. Store tokens only in PasswordSafe, verify state, bind the callback to loopback only, enforce timeout/cancellation, and avoid logging codes or tokens. Keep provider-specific logic behind CredentialPort.
-
-Add fake OAuth server/browser callback tests for success, denial, state mismatch, occupied port, timeout, refresh, revoked token, logout, and project close. Run all offline tests and Plugin Verifier, update the plan, inspect the diff, then commit and push Phase 10 to main.
-```
-
-### Prompt 11A: Hardening and release plan
-
-Mode: Reasoning
-
-Reasoning level: Ultra
-
-```text
-Read the entire blueprint, all phase plans, current source, open TODOs, and test reports. Produce docs/implementation/phase-11-hardening-release-plan.md.
-
-Map every master acceptance criterion and failure-matrix row to an automated test or a documented manual check. Plan API/internal-usage review, dependency and license audit, credential/privacy review, checkpoint recovery fault injection, concurrency stress, large-output behavior, performance benchmarks, Plugin Verifier, clean install/upgrade/uninstall, packaging, and private release notes.
-
-Do not implement. Identify any unmet design invariant as a release blocker. Commit and push only the plan to main.
-```
-
-### Prompt 11B: Harden and package
-
-Mode: Coding
-
-Reasoning level: High
-
-```text
-Execute the approved Phase 11 plan. Fix only issues required by the blueprint, failure matrix, acceptance criteria, compatibility checks, security review, or measured regressions. Do not add unrelated features.
-
-Run the complete automated suite, concurrency and recovery tests, local latency benchmarks, IntelliJ inspections, and Plugin Verifier against IntelliJ IDEA 2026.2. Produce the private plugin artifact and ASCII release notes with exact checks and known limitations. Update the hardening plan with evidence, inspect the final diff, then commit and push the release-ready state to main.
-```
+- Run phases in numerical order.
+- Start each prompt with a fresh context when practical.
+- Give the prompt only its mini blueprint, the named prerequisite plans, repository instructions, and current source.
+- Do not combine planning and implementation prompts.
+- Do not combine phases.
+- Treat each verified fast-forward commit on `main` as a context checkpoint.
+- Stop on remote divergence or a material design ambiguity.
+- If implementation discovers a cross-phase contract conflict, update the master and affected mini blueprints in a dedicated reviewed design commit before continuing.
 
 ## 25. Official references
 
