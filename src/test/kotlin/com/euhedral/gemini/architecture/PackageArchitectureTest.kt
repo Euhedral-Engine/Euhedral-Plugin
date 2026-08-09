@@ -1,6 +1,7 @@
 package com.euhedral.gemini.architecture
 
 import com.euhedral.gemini.architecture.fixtures.ForbiddenDependencyFixture
+import com.euhedral.gemini.architecture.fixtures.ForbiddenPortTypeFixture
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes
@@ -31,8 +32,14 @@ class PackageArchitectureTest {
             .should().dependOnClassesThat().resideInAnyPackage(
                 "com.intellij..",
                 "org.jetbrains..",
+                "com.google..",
+                "org.gradle..",
+                "git4idea..",
+                "org.eclipse.jgit..",
+                "java.net.http..",
                 "javax.swing..",
-                "java.awt.."
+                "java.awt..",
+                "com.euhedral.gemini.adapters.."
             )
             .allowEmptyShould(true)
             .check(productionClasses)
@@ -170,6 +177,21 @@ class PackageArchitectureTest {
         try {
             rule.check(classes)
             fail("Expected architecture rule check to fail for ForbiddenDependencyFixture")
+        } catch (e: AssertionError) {
+            // Success: rule correctly detected forbidden dependency
+        }
+    }
+
+    @Test
+    fun `negative architecture guard fails on forbidden port type fixture`() {
+        val classes = ClassFileImporter().importClasses(ForbiddenPortTypeFixture::class.java)
+        val rule = noClasses()
+            .that().resideInAPackage("com.euhedral.gemini.architecture.fixtures..")
+            .should().dependOnClassesThat().resideInAPackage("com.intellij..")
+
+        try {
+            rule.check(classes)
+            fail("Expected architecture rule check to fail for ForbiddenPortTypeFixture")
         } catch (e: AssertionError) {
             // Success: rule correctly detected forbidden dependency
         }

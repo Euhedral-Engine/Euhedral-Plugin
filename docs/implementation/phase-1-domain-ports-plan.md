@@ -1,6 +1,6 @@
 # Phase 1 Domain and Ports Implementation Plan
 
-Status: Planned
+Status: Implemented
 
 Plan date: 2026-08-09
 
@@ -237,8 +237,9 @@ PASSED_AWAITING_FINAL
 
 `AgentSession` is an immutable `[SP]` value because its in-memory mutation
 ledger may contain an exact source-bearing result. Its secret-free
-`SessionRecoveryMetadata` projection is `[S]` and excludes model text, source,
-tool output, and credential material. `AgentSession` contains:
+`SessionRecoveryMetadata` projection is `[SP]`: it excludes model text and
+credential material but retains the bounded terminal tool result required to
+replay a completed mutating call exactly after restoration. `AgentSession` contains:
 
 ```text
 id: SessionId
@@ -341,6 +342,7 @@ ToolCallsAccepted
 RetryConsumed
 RetryScopeReset
 ProcessTimingObserved
+SessionTimingObserved
 MutatingCallReserved
 MutatingCallCompleted
 TransactionRevisionChanged
@@ -359,7 +361,9 @@ SessionCancelled
 
 `SessionStarted` carries the elapsed-time origin. `ModelTurnStarted`,
 `ToolCallsAccepted`, retry events, and `ProcessTimingObserved` update only their
-own budgets. `InteractionRecorded` appends one new remote interaction ID and
+own budgets. `SessionTimingObserved` reports elapsed session wall-clock time
+independently of any process invocation, including approval and backoff waits.
+`InteractionRecorded` appends one new remote interaction ID and
 rejects a duplicate or out-of-order continuation.
 
 `MutatingCallReserved` and `MutatingCallCompleted` update only the ledger.
@@ -1460,3 +1464,36 @@ Results:
 - Remaining risk: exact adapter API choices remain intentionally deferred to
   their owning phases; no adapter behavior can be validated in this pure
   contract phase.
+
+## 20. Implementation publication record
+
+Implementation completed on 2026-08-09:
+
+```text
+mise exec -- ./gradlew --version
+mise exec -- ./gradlew clean verifyJava25 test
+mise exec -- ./gradlew verifyPluginProjectConfiguration verifyPluginStructure
+mise exec -- ./gradlew buildPlugin verifyPlugin
+iconv -f US-ASCII -t US-ASCII docs/implementation/phase-1-domain-ports-plan.md
+git diff --check
+```
+
+Results and evidence:
+
+- Final environment: Gradle 9.5.0, Java 25.0.2 (Oracle Corporation), Kotlin 2.4.0, IntelliJ Platform Plugin 2.18.1, Target IDE IU-262.8665.337.
+- Complete suite execution: 168 total tests executed (163 Phase 1 tests across 9 test classes + 5 Phase 0 platform tests), 0 failed, 0 skipped.
+  - AgentReducerTest: 33 tests passing (valid and invalid transitions, approval guards, independent timers, de-dup reducer guards, subphase eligibility, revision incrementing, terminal reason invariants).
+  - AgentBudgetTest: 22 tests passing (7 independent budgets, scope resets, exhaustion rules, process/session deadlines, counter overflow guard).
+  - MutatingCallLedgerTest: 20 tests passing (at-most-once mutation claim, duplicate wait/replay, fingerprint matching, recovery replay, outcome unknown refusal).
+  - VerificationDigestTest: 23 tests passing (SHA-256 validation, transaction revision advancement, verification frozen digest recording, post-mutation invalidation).
+  - ToolContractTest: 16 tests passing (22 standard tool descriptors, collision-safe canonical fingerprints, parameter schemas, bounded metadata, batch planner concurrency/ordering).
+  - AgentErrorTest: 8 tests passing (stable categories, error codes, retry mapping, details safety).
+  - ApplicationPortContractTest: 19 tests passing (8 application ports, Gemini transport, workspace inspection/edit, build system, git read, credentials, checkpoint store, approval port).
+  - SerializationBoundaryTest: 10 tests passing ([S], [SP], [L] boundary classifications, reachability rules).
+  - PackageArchitectureTest: 12 tests passing (pure domain/port import guards, negative fixtures).
+- Pure contract verification: No IntelliJ fixture, Gemini wire DTO, HTTP client, or Gradle process is loaded by core or port tests.
+- Plugin structure and packaging: `buildPlugin` and `verifyPlugin` completed with exit code 0. Plugin structure is verified compatible with target IDE IU-262.8665.337, marked dynamically reloadable.
+- ASCII conversion check: passed.
+- Git whitespace check: passed.
+- Deviations: none from Phase 1 blueprint and plan.
+- Remaining risks: concrete IntelliJ adapters, Gemini HTTP behavior, Gradle command execution, and Swing UI components are intentionally deferred to Phase 2 and beyond.
