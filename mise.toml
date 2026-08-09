@@ -1,0 +1,4 @@
+# Kotlin and IntelliJ Platform versions are pinned by the Gradle build.
+[tools]
+java = "25"
+gradle = "9.5.0"
