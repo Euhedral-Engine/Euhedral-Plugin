@@ -1,0 +1,24 @@
+<idea-plugin>
+  <id>com.euhedral.gemini</id>
+  <name>Euhedral Gemini Agent</name>
+  <vendor>Euhedral</vendor>
+  <description>Inert platform shell for the Euhedral Gemini Agent.</description>
+
+  <depends>com.intellij.modules.platform</depends>
+  <depends>com.intellij.modules.idea</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <projectService
+        serviceImplementation="com.euhedral.gemini.bootstrap.GeminiProjectService"/>
+    <toolWindow
+        id="Euhedral Gemini"
+        anchor="right"
+        factoryClass="com.euhedral.gemini.ui.AgentToolWindowFactory"
+        icon="AllIcons.Toolwindows.ToolWindowPalette"/>
+    <applicationConfigurable
+        id="com.euhedral.gemini.settings"
+        parentId="tools"
+        displayName="Euhedral Gemini Agent"
+        instance="com.euhedral.gemini.settings.GeminiSettingsConfigurable"/>
+  </extensions>
+</idea-plugin>

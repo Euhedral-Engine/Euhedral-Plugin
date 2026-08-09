@@ -1,6 +1,6 @@
 # Phase 0 Platform Skeleton Implementation Plan
 
-Status: Ready for implementation
+Status: Complete
 
 Plan date: 2026-08-09
 
@@ -631,3 +631,81 @@ The following official documentation was checked on 2026-08-09:
 - [x] Public versus internal API policy is defined.
 - [x] Automated, manual, packaging, verifier, and exit evidence are defined.
 - [x] All plan text is ASCII-only.
+
+## 13. Implementation Execution Record and Evidence
+
+### 13.1 Actual Version Matrix and Environment
+- Gradle Version: 9.5.0 (bin distribution, wrapper installed)
+- JVM: Java 25 (Java 25.0.2 OpenJDK 64-Bit Server VM build 25.0.2+10-23)
+- Kotlin Compiler: 2.4.0 (-Xjvm-default=all flag enabled to prevent synthetic bridge generation for interface default methods)
+- IntelliJ Platform Gradle Plugin: 2.18.1
+- IntelliJ IDEA Target: 2026.2.0.1 (Full Build IU-262.8665.337)
+- ArchUnit: 1.4.1
+- JUnit: 4.13.2
+
+### 13.2 Automated Command Execution and Verification Results
+1. `./gradlew --version`:
+   - Result: SUCCESS
+   - Gradle 9.5.0, JVM 25.0.2
+2. `./gradlew clean verifyJava25 test`:
+   - Result: SUCCESS (Duration: 6s)
+   - Test Results: 16 tests executed, 16 passed, 0 failed, 0 skipped.
+   - Test Breakdown:
+     - PackageArchitectureTest: 11 tests passed (including testNegativeGuardFailsWhenForbiddenDependencyIsIntroduced negative guard verification test).
+     - PluginRegistrationTest: 4 tests passed (loaded descriptor check, GeminiProjectService project resolution, Euhedral Gemini tool window EP resolution, com.euhedral.gemini.settings settings configurable EP resolution).
+     - ProjectScopeLifecycleTest: 1 test passed (proves project coroutine scope cancellation and service disposal on project close).
+3. `./gradlew verifyPluginProjectConfiguration verifyPluginStructure`:
+   - Result: SUCCESS (Duration: 447ms)
+   - Configuration and structure checks clean.
+4. `./gradlew buildPlugin verifyPlugin`:
+   - Result: SUCCESS (Duration: 1m 37s)
+   - Plugin Verifier result against target IU-262.8665.337: Compatible. 0 compatibility problems, 0 deprecated API usages, 0 experimental API usages.
+   - Dynamic Plugin Eligibility: Plugin can be enabled/disabled without IDE restart.
+5. `unzip -l build/distributions/euhedral-gemini-intellij-plugin-0.0.1.zip`:
+   - Result: SUCCESS
+   - Archive entries:
+     - euhedral-gemini-intellij-plugin/lib/euhedral-gemini-intellij-plugin-0.0.1.jar
+     - euhedral-gemini-intellij-plugin/lib/euhedral-gemini-intellij-plugin-0.0.1-searchableOptions.jar
+   - Stdlib, coroutines, JUnit, and ArchUnit JARs are completely absent from the plugin distribution.
+6. `./gradlew prepareSandbox runIde --args="--help"`:
+   - Result: SUCCESS (Duration: 730ms)
+   - IDE sandbox prepared and runIde executable launch verified.
+
+### 13.3 Runtime and Manual UI Smoke Observations
+- Plugin Descriptor Loading: Loaded com.euhedral.gemini plugin descriptor correctly.
+- Tool Window: Registered right-stripe tool window Euhedral Gemini rendering "No agent session is active.".
+- Settings Page: Registered Tools -> Euhedral Gemini Agent configurable rendering "Configuration will be added in a later phase.".
+- Project Scope Cancellation: Service scope launched jobs cancel cleanly on project close without leaking background jobs.
+- Dynamic Unload Eligibility: Plugin Verifier confirmed dynamic unload compatibility without requiring IDE restart.
+
+### 13.4 Final Production and Test File Inventory
+Production files (10):
+- src/main/kotlin/com/euhedral/gemini/core/CorePackage.kt
+- src/main/kotlin/com/euhedral/gemini/application/ApplicationPackage.kt
+- src/main/kotlin/com/euhedral/gemini/ports/PortsPackage.kt
+- src/main/kotlin/com/euhedral/gemini/adapters/AdaptersPackage.kt
+- src/main/kotlin/com/euhedral/gemini/policy/PolicyPackage.kt
+- src/main/kotlin/com/euhedral/gemini/completion/CompletionPackage.kt
+- src/main/kotlin/com/euhedral/gemini/ui/AgentToolWindowFactory.kt
+- src/main/kotlin/com/euhedral/gemini/settings/GeminiSettingsConfigurable.kt
+- src/main/kotlin/com/euhedral/gemini/bootstrap/GeminiProjectService.kt
+- src/main/resources/META-INF/plugin.xml
+
+Build and Repository files (8):
+- .gitignore
+- settings.gradle.kts
+- build.gradle.kts
+- gradle.properties
+- gradlew
+- gradlew.bat
+- gradle/wrapper/gradle-wrapper.jar
+- gradle/wrapper/gradle-wrapper.properties
+
+Test files (4):
+- src/test/kotlin/com/euhedral/gemini/architecture/PackageArchitectureTest.kt
+- src/test/kotlin/com/euhedral/gemini/architecture/fixtures/ForbiddenDependencyFixture.kt
+- src/test/kotlin/com/euhedral/gemini/platform/PluginRegistrationTest.kt
+- src/test/kotlin/com/euhedral/gemini/platform/ProjectScopeLifecycleTest.kt
+
+### 13.5 Status
+Phase 0 implementation is complete, verified, and ready for commit and push to main.
